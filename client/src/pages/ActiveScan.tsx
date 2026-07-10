@@ -32,6 +32,12 @@ export default function ActiveScan() {
     signalBuffer
   } = useHeartRateMonitor();
 
+  // Keep refs in sync so finalize() always reads the latest values
+  const bpmRef = useRef(bpm);
+  const bpRef = useRef(bp);
+  useEffect(() => { bpmRef.current = bpm; }, [bpm]);
+  useEffect(() => { bpRef.current = bp; }, [bp]);
+
   const startStage = async (stage: 'heart-rate' | 'facial') => {
     setScanState('running');
     const duration = stage === 'heart-rate' ? 45 : 15;
@@ -87,9 +93,12 @@ export default function ActiveScan() {
   };
 
   const finalize = () => {
-    const finalBpm = bpm || 72;
-    const finalBp = bp || { systolic: 120, diastolic: 80, category: 'Normal ✅', color: 'text-green-500' };
+    // Read from refs to get the LATEST values (avoids stale closure)
+    const finalBpm = bpmRef.current || 72;
+    const finalBp = bpRef.current || { systolic: 120, diastolic: 80, category: 'Normal ✅', color: 'text-green-500' };
     const { cvdProbability, healthScore, aiConfidence } = predictFromScan(finalBpm, finalBp.systolic, finalBp.diastolic);
+
+    console.log('[HeartGuard] finalize — bpm:', finalBpm, 'bp:', finalBp.systolic + '/' + finalBp.diastolic, 'healthScore:', healthScore);
 
     const finalReport: ScanResult = {
       id: 'scan_' + Date.now(),

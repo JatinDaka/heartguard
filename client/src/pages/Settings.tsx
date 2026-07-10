@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { ChevronRight, User } from 'lucide-react';
+import { ChevronRight, User, Save, CheckCircle2 } from 'lucide-react';
+import { getUserProfile, saveUserProfile, type UserProfile } from '@/lib/userProfile';
 
 export default function Settings() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -14,6 +15,21 @@ export default function Settings() {
   const [scanAlerts, setScanAlerts] = useState(false);
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+
+  // ── Health Profile state ──
+  const [profile, setProfile] = useState<UserProfile>(getUserProfile);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const updateProfile = (patch: Partial<UserProfile>) => {
+    setProfile(prev => ({ ...prev, ...patch }));
+    setProfileSaved(false);
+  };
+
+  const handleSaveProfile = () => {
+    saveUserProfile(profile);
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  };
 
   const handleSaveContact = () => {
     console.log('Saving contact:', { contactName, contactPhone });
@@ -31,6 +47,8 @@ export default function Settings() {
     return 'High';
   };
 
+  const bmi = profile.weight / Math.pow(profile.height / 100, 2);
+
   return (
     <Layout>
       <div className="min-h-screen bg-background pb-24">
@@ -47,6 +65,132 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">guest@heartguard.app</p>
               </div>
             </div>
+          </div>
+
+          {/* ── HEALTH PROFILE ── */}
+          <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-1">Health Profile</h3>
+            <p className="text-sm text-muted-foreground mb-5">
+              This data is used by the AI models during Active Scan for personalised risk prediction.
+            </p>
+
+            {/* Age */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Age</label>
+                <span className="text-sm font-semibold text-primary">{profile.age} years</span>
+              </div>
+              <input
+                type="range" min={18} max={90} value={profile.age}
+                onChange={e => updateProfile({ age: +e.target.value })}
+                className="w-full accent-primary"
+              />
+            </div>
+
+            {/* Height & Weight side-by-side */}
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="block text-sm font-medium mb-2">Height (cm)</label>
+                <Input
+                  type="number" min={100} max={230}
+                  value={profile.height}
+                  onChange={e => updateProfile({ height: +e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Weight (kg)</label>
+                <Input
+                  type="number" min={30} max={250}
+                  value={profile.weight}
+                  onChange={e => updateProfile({ weight: +e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* BMI display */}
+            <div className="bg-muted/40 rounded-lg px-4 py-2 mb-5 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Calculated BMI</span>
+              <span className={`text-sm font-bold ${bmi >= 30 ? 'text-destructive' : bmi >= 25 ? 'text-yellow-600' : 'text-green-600'}`}>
+                {bmi.toFixed(1)}
+              </span>
+            </div>
+
+            {/* Gender */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium mb-2">Gender</label>
+              <div className="flex gap-2">
+                <button
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${profile.gender === 0 ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-accent'}`}
+                  onClick={() => updateProfile({ gender: 0 })}
+                >Female</button>
+                <button
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${profile.gender === 1 ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-accent'}`}
+                  onClick={() => updateProfile({ gender: 1 })}
+                >Male</button>
+              </div>
+            </div>
+
+            {/* Cholesterol */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium mb-2">Cholesterol Level</label>
+              <div className="flex gap-2">
+                {([1, 2, 3] as const).map(v => (
+                  <button key={v}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${profile.cholesterol === v ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-accent'}`}
+                    onClick={() => updateProfile({ cholesterol: v })}
+                  >{v === 1 ? 'Normal' : v === 2 ? 'Above' : 'High'}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Glucose */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium mb-2">Glucose Level</label>
+              <div className="flex gap-2">
+                {([1, 2, 3] as const).map(v => (
+                  <button key={v}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${profile.glucose === v ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-accent'}`}
+                    onClick={() => updateProfile({ glucose: v })}
+                  >{v === 1 ? 'Normal' : v === 2 ? 'Above' : 'High'}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Lifestyle toggles */}
+            <div className="space-y-4 mb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Smoking</p>
+                  <p className="text-xs text-muted-foreground">Do you currently smoke?</p>
+                </div>
+                <Switch checked={profile.smoking === 1} onCheckedChange={v => updateProfile({ smoking: v ? 1 : 0 })} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Physically Active</p>
+                  <p className="text-xs text-muted-foreground">Regular exercise or physical activity</p>
+                </div>
+                <Switch checked={profile.active === 1} onCheckedChange={v => updateProfile({ active: v ? 1 : 0 })} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Alcohol Consumption</p>
+                  <p className="text-xs text-muted-foreground">Regular alcohol intake</p>
+                </div>
+                <Switch checked={profile.alcohol === 1} onCheckedChange={v => updateProfile({ alcohol: v ? 1 : 0 })} />
+              </div>
+            </div>
+
+            {/* Save button */}
+            <Button onClick={handleSaveProfile} className="w-full gap-2">
+              {profileSaved ? (
+                <><CheckCircle2 className="w-4 h-4" /> Profile Saved!</>
+              ) : (
+                <><Save className="w-4 h-4" /> Save Health Profile</>
+              )}
+            </Button>
           </div>
 
           <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">

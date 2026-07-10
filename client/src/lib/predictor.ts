@@ -8,6 +8,7 @@ import {
   ENSEMBLE_WEIGHTS,
   DATASET_STATS
 } from './modelsData';
+import { getUserProfile } from './userProfile';
 
 export interface TreeNode {
   leaf?: number;
@@ -139,29 +140,23 @@ export function mergedPredict(raw: number[]) {
   };
 }
 
-// Predict from Active Scan results (with clinical fallbacks for demographics)
+// Predict from Active Scan results — uses the user's saved health profile
 export function predictFromScan(bpm: number, systolic: number, diastolic: number) {
-  // Clinical demographics defaults matching server
-  const age = 53;
-  const bmi = 25.95; // 75kg, 170cm
-  const gender = 0;
-  const cholesterol = 1;
-  const glucose = 1;
-  const smoking = 0;
-  const active = 1;
-  const alcohol = 0;
+  const profile = getUserProfile();
+  const bmi = profile.weight / Math.pow(profile.height / 100, 2);
+  console.log('[HeartGuard] predictFromScan using profile:', profile, 'BMI:', bmi.toFixed(1), 'Vitals:', { bpm, systolic, diastolic });
 
   const rawFeatures = buildFeatureVector(
-    age,
+    profile.age,
     bmi,
-    gender,
-    cholesterol,
-    glucose,
-    smoking,
-    active,
+    profile.gender,
+    profile.cholesterol,
+    profile.glucose,
+    profile.smoking,
+    profile.active,
     systolic,
     diastolic,
-    alcohol
+    profile.alcohol
   );
 
   const prediction = mergedPredict(rawFeatures);
