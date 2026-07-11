@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { ChevronRight, User, Save, CheckCircle2 } from 'lucide-react';
 import { getUserProfile, saveUserProfile, type UserProfile } from '@/lib/userProfile';
+import { clearScanHistory } from '@/lib/scanHistory';
 
 export default function Settings() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -13,8 +14,6 @@ export default function Settings() {
   const [voiceConfirmation, setVoiceConfirmation] = useState(true);
   const [dailyReminders, setDailyReminders] = useState(true);
   const [scanAlerts, setScanAlerts] = useState(false);
-  const [contactName, setContactName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
 
   // ── Health Profile state ──
   const [profile, setProfile] = useState<UserProfile>(getUserProfile);
@@ -37,7 +36,7 @@ export default function Settings() {
 
   const handleClearHistory = () => {
     if (confirm('Are you sure you want to clear all scan history? This action cannot be undone.')) {
-      console.log('Clearing history');
+      clearScanHistory();
     }
   };
 
@@ -227,35 +226,6 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">Emergency Contact</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Contact Name</label>
-                <Input
-                  type="text"
-                  placeholder="Enter name"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Phone Number</label>
-                <Input
-                  type="tel"
-                  placeholder="Enter phone number"
-                  value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
-                />
-              </div>
-
-              <Button onClick={handleSaveContact} className="w-full">
-                Save Contact
-              </Button>
-            </div>
-          </div>
 
           <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4">Notifications</h3>

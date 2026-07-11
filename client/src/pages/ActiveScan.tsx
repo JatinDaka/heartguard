@@ -5,6 +5,7 @@ import { ChevronLeft, Activity, HeartPulse, Camera, CheckCircle2 } from 'lucide-
 import { ROUTE_PATHS, type ScanMode, type ScanResult } from '@/lib/index';
 import { useHeartRateMonitor } from '@/hooks/useHeartRateMonitor';
 import { predictFromScan } from '@/lib/predictor';
+import { saveScanToHistory } from '@/lib/scanHistory';
 
 export default function ActiveScan() {
   const navigate = useNavigate();
@@ -114,6 +115,10 @@ export default function ActiveScan() {
       duration: 45,
       bpEstimate: finalBp
     };
+
+    // Persist to localStorage so History tab shows real data
+    saveScanToHistory(finalReport);
+
     navigate(ROUTE_PATHS.RESULTS, { state: finalReport });
   };
 

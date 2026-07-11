@@ -163,7 +163,7 @@ export function predictFromScan(bpm: number, systolic: number, diastolic: number
 
   // Health Score Calculation based on probability & vitals
   let healthScore = Math.round((1 - prediction.prob) * 100);
-  
+
   // Abnormal heart rate penalties
   if (bpm < 60 || bpm > 100) healthScore -= 10;
   else if (bpm < 65 || bpm > 90) healthScore -= 4;

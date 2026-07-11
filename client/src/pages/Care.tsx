@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ShieldAlert, Phone, Users } from 'lucide-react';
+import { Plus, Trash2, ShieldAlert, Phone, Users, PhoneCall } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 
 interface Contact {
@@ -15,6 +15,7 @@ export default function Care() {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newRelation, setNewRelation] = useState('Parent');
+  const [calling, setCalling] = useState<string | null>(null);
 
   const [alerts, setAlerts] = useState({
     highBpm: true,
@@ -50,6 +51,27 @@ export default function Care() {
     saveContacts(contacts.filter(c => c.id !== id));
   };
 
+  /** Directly initiates a phone call — no confirmation step */
+  const callContact = (contact: Contact) => {
+    setCalling(contact.id);
+    // Using an <a> element trick forces the call intent immediately
+    const a = document.createElement('a');
+    a.href = `tel:${contact.phone}`;
+    a.click();
+    setTimeout(() => setCalling(null), 3000);
+  };
+
+  /** Emergency SOS — calls first contact or 112 immediately */
+  const triggerSOS = () => {
+    if (contacts.length > 0) {
+      callContact(contacts[0]);
+    } else {
+      const a = document.createElement('a');
+      a.href = 'tel:112';
+      a.click();
+    }
+  };
+
   return (
     <Layout>
       <div className="p-6 space-y-8">
@@ -58,13 +80,29 @@ export default function Care() {
           <p className="text-sm text-gray-400">Keep your family informed and safe.</p>
         </div>
 
+        {/* SOS Button */}
+        <button
+          onClick={triggerSOS}
+          className="w-full bg-red-600 text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 text-sm uppercase tracking-wider shadow-lg shadow-red-200 active:scale-95 transition-transform"
+        >
+          <PhoneCall className="w-5 h-5" />
+          {contacts.length > 0
+            ? `🆘 Emergency — Call ${contacts[0].name}`
+            : '🆘 Emergency — Call 112'}
+        </button>
+        {contacts.length > 0 && (
+          <p className="text-[10px] text-gray-400 text-center -mt-6">
+            Saying "Emergency" also triggers this call instantly
+          </p>
+        )}
+
         {/* Emergency Contacts */}
         <section className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
               <Users className="w-4 h-4" /> Emergency Contacts
             </h2>
-            <button 
+            <button
               onClick={() => setShowAdd(!showAdd)}
               className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
             >
@@ -74,17 +112,18 @@ export default function Care() {
 
           {showAdd && (
             <div className="bg-blue-50 p-4 rounded-2xl space-y-3 border border-blue-100">
-               <input 
-                 placeholder="Full Name" 
+               <input
+                 placeholder="Full Name"
                  className="w-full p-3 rounded-xl border-none text-sm"
                  value={newName} onChange={e => setNewName(e.target.value)}
                />
-               <input 
-                 placeholder="Phone Number" 
+               <input
+                 placeholder="Phone Number (e.g. +91 98765 43210)"
                  className="w-full p-3 rounded-xl border-none text-sm"
                  value={newPhone} onChange={e => setNewPhone(e.target.value)}
+                 type="tel"
                />
-               <select 
+               <select
                  className="w-full p-3 rounded-xl border-none text-sm"
                  value={newRelation} onChange={e => setNewRelation(e.target.value)}
                >
@@ -92,8 +131,9 @@ export default function Care() {
                  <option>Spouse</option>
                  <option>Child</option>
                  <option>Friend</option>
+                 <option>Doctor</option>
                </select>
-               <button 
+               <button
                  onClick={addContact}
                  className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs uppercase"
                >
@@ -106,22 +146,35 @@ export default function Care() {
              {contacts.length === 0 && !showAdd && (
                <div className="text-center py-8 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                  <p className="text-xs text-gray-400">No emergency contacts added.</p>
+                 <p className="text-[10px] text-gray-300 mt-1">Add a contact so HeartGuard can call them in an emergency.</p>
                </div>
              )}
-             {contacts.map(contact => (
+             {contacts.map((contact, idx) => (
                <div key={contact.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                  <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase">
+                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase relative">
                      {contact.name.charAt(0)}
+                     {idx === 0 && (
+                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center font-bold">1</span>
+                     )}
                    </div>
                    <div>
                      <p className="text-sm font-bold text-gray-900">{contact.name}</p>
                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{contact.relation} • {contact.phone}</p>
                    </div>
                  </div>
-                 <button onClick={() => deleteContact(contact.id)} className="p-2 text-red-400 hover:text-red-600">
-                   <Trash2 className="w-4 h-4" />
-                 </button>
+                 <div className="flex items-center gap-2">
+                   {/* Direct call button */}
+                   <button
+                     onClick={() => callContact(contact)}
+                     className={`p-2 rounded-full transition-colors ${calling === contact.id ? 'bg-green-100 text-green-600 animate-pulse' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                   >
+                     <Phone className="w-4 h-4" />
+                   </button>
+                   <button onClick={() => deleteContact(contact.id)} className="p-2 text-red-400 hover:text-red-600">
+                     <Trash2 className="w-4 h-4" />
+                   </button>
+                 </div>
                </div>
              ))}
           </div>
@@ -166,12 +219,6 @@ export default function Care() {
             </div>
           </div>
         </section>
-
-        <div className="flex gap-4">
-           <button className="flex-1 bg-red-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase shadow-lg shadow-red-100">
-             <Phone className="w-4 h-4" /> Call 112
-           </button>
-        </div>
       </div>
     </Layout>
   );

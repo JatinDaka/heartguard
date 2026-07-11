@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ChevronRight, Activity, Camera, Mic } from 'lucide-react';
+import { Clock, ChevronRight, Activity, Camera, Mic, Trash2 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
-import { MOCK_HISTORY, ROUTE_PATHS, type ScanMode } from '@/lib/index';
+import { ROUTE_PATHS, type ScanMode, type ScanResult } from '@/lib/index';
+import { loadScanHistory, clearScanHistory } from '@/lib/scanHistory';
 
 type FilterTab = 'all' | ScanMode;
 
@@ -63,44 +64,49 @@ function formatTime(date: Date): string {
 export default function History() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const [history, setHistory] = useState<ScanResult[]>([]);
 
-  const filteredHistory = MOCK_HISTORY.filter(
+  // Load from localStorage on mount (and when tab becomes visible)
+  useEffect(() => {
+    const load = () => setHistory(loadScanHistory());
+    load();
+    window.addEventListener('focus', load);
+    return () => window.removeEventListener('focus', load);
+  }, []);
+
+  const filteredHistory = history.filter(
     (entry) => activeFilter === 'all' || entry.scanMode === activeFilter
   );
 
-  const handleCardClick = (entry: typeof MOCK_HISTORY[0]) => {
-    navigate(ROUTE_PATHS.RESULTS, {
-      state: {
-        id: entry.id,
-        date: entry.date,
-        scanMode: entry.scanMode,
-        bpm: entry.bpm || 72,
-        healthScore: entry.healthScore || 90,
-        aiConfidence: 98,
-        stressLevel: 'low',
-        pallor: false,
-        cyanosis: false,
-        duration: 30,
-        metrics: {
-          heartRate: { value: entry.bpm || 72, unit: 'BPM', status: 'Normal' },
-          heartRateVariability: { value: 48, unit: 'ms', status: 'Good' },
-          bloodPressure: { value: '118/76', unit: 'mmHg', status: 'Optimal' },
-          oxygenLevel: { value: 98.5, unit: '%', status: 'Optimal' },
-          respiratoryRate: { value: 14, unit: 'br/m', status: 'Normal' },
-          stressLevel: { value: 'Low', score: 18, status: 'Stable' }
-        },
-        aiInterpretation: "Analysis of your historical data confirms a stable cardiovascular profile with optimal recovery markers."
-      }
-    });
+  const handleClearAll = () => {
+    if (confirm('Clear all scan history? This cannot be undone.')) {
+      clearScanHistory();
+      setHistory([]);
+    }
+  };
+
+  const handleCardClick = (entry: ScanResult) => {
+    navigate(ROUTE_PATHS.RESULTS, { state: entry });
   };
 
   return (
     <Layout>
       <div className="min-h-screen bg-background pb-20">
         <div className="max-w-lg mx-auto px-4 py-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground mb-2">History</h1>
-            <p className="text-muted-foreground">Previous health scans</p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-1">History</h1>
+              <p className="text-muted-foreground text-sm">Your previous health scans</p>
+            </div>
+            {history.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                title="Clear all history"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -125,17 +131,21 @@ export default function History() {
                 <Clock className="w-10 h-10 text-muted-foreground" />
               </div>
               <h2 className="text-xl font-semibold text-foreground mb-2">
-                No scans yet
+                {history.length === 0 ? 'No scans yet' : 'No scans in this category'}
               </h2>
               <p className="text-muted-foreground text-center mb-6">
-                Start your first health check
+                {history.length === 0
+                  ? 'Complete your first scan to see results here'
+                  : 'Try a different filter'}
               </p>
-              <button
-                onClick={() => navigate(ROUTE_PATHS.SCAN_SELECT)}
-                className="px-6 py-3 bg-blue-brand text-white rounded-xl font-medium hover:bg-blue-brand/90 transition-colors"
-              >
-                Start Scan
-              </button>
+              {history.length === 0 && (
+                <button
+                  onClick={() => navigate(ROUTE_PATHS.SCAN_SELECT)}
+                  className="px-6 py-3 bg-blue-brand text-white rounded-xl font-medium hover:bg-blue-brand/90 transition-colors"
+                >
+                  Start Scan
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -143,6 +153,7 @@ export default function History() {
                 const Icon = SCAN_MODE_ICONS[entry.scanMode];
                 const dotColor = SCAN_MODE_COLORS[entry.scanMode];
                 const label = SCAN_MODE_LABELS[entry.scanMode];
+                const date = entry.date instanceof Date ? entry.date : new Date(entry.date);
 
                 return (
                   <button
@@ -157,13 +168,18 @@ export default function History() {
                           {label}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {formatDate(entry.date)} • {formatTime(entry.date)}
+                          {formatDate(date)} • {formatTime(date)}
                         </div>
+                        {entry.bpEstimate && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            BP {entry.bpEstimate.systolic}/{entry.bpEstimate.diastolic} mmHg
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      {entry.bpm && (
+                      {entry.bpm != null && (
                         <div className="text-right">
                           <div className="text-2xl font-bold text-blue-brand">
                             {entry.bpm}
@@ -171,7 +187,7 @@ export default function History() {
                           <div className="text-xs text-muted-foreground">BPM</div>
                         </div>
                       )}
-                      {entry.healthScore && !entry.bpm && (
+                      {entry.healthScore != null && (
                         <div className="text-right">
                           <div className="text-2xl font-bold text-emerald">
                             {entry.healthScore}
